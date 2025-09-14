@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import json
 import os
+import os
 
 # ------------------------------
 # Data Loading

@@ -1,5 +1,3 @@
-Collecting yfinance
-  Downloading yfinance-0.2.65-py2.py3-none-any.whl.metadata (5.8 kB)
-Requirement already satisfied: pandas>=1.3.0 in c:\users\admin\anaconda3\envs\py310\lib\site-packages (from yfinance) (2.2.1)
-Requirement already satisfied: numpy>=1.16.5 in c:\users\admin\anaconda3\envs\py310\lib\site-packages (from yfinance) (1.26.4)
-Requirement already satisfied: requests>=2.31 in c:\users\admin\anaconda3\envs\py310\lib\site-packages (from yfinance) (2.31.0)
+yfinance==0.2.65
+pandas==2.3.2
+matplotlib==3.10.6

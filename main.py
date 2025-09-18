@@ -1,6 +1,6 @@
 # main.py
 
-from data_handler import (
+from src.data_handler import (
     CONFIG, fetch_stock_data, clean_all_tickers, align_with_trading_days,
     detect_outliers, data_quality_report, validate_preprocessing,
     pivot_wide, save_datasets

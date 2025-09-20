@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 def simple_moving_avg(prices: list[float], window: int) -> list[float | None]:
     if window <1:
@@ -56,3 +57,18 @@ if __name__ == "__main__":
 
     except FileNotFoundError:
         print("Could not find Clean_data/AAPL_stock.csv — check your path.")
+
+    # Compute SMA using Pandas rolling mean
+    sma_pd = pd.Series(prices).rolling(window_size).mean().tolist()
+
+    # Compare element by element
+    for i, (smacal, pandascal) in enumerate(zip(sma_cal, sma_pd)):
+        if smacal is None and pd.isna(pandascal):
+            continue  # Both mean "no value yet"
+        elif smacal is not None and not pd.isna(pandascal):
+            if not math.isclose(smacal, pandascal, rel_tol=1e-12):
+                print(f"Mismatch at index {i}: mine={smacal}, pandas={pandascal}")
+                break
+            else:
+                print("SMA values are correct!")
+                break

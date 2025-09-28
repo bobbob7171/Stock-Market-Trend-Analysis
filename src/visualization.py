@@ -1,192 +1,181 @@
-"""
-Visualization Module
-Handles plotting of prices, SMAs, streaks, and profits.
-"""
+# graph.py
 
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from typing import List, Tuple
+import streamlit as st
 
 
-def plot_price_sma_interactive(dates, prices, sma, save_folder="Graphs", filename="price_sma.html"):
-    # Create folder if it doesn't exist
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
+# # ---------------------------
+# # Helper: Show Figure
+# # ---------------------------
+# def show_fig(fig: go.Figure, title: str = "") -> None:
+#     """Helper function to display a Plotly figure in the browser."""
+#     if title:
+#         fig.update_layout(title=title)
+#     fig.show(renderer="browser")
 
+def show_fig(fig: go.Figure, title: str = "") -> None:
+    """Display a Plotly figure directly in Streamlit."""
+    if title:
+        fig.update_layout(title=title)
+    st.plotly_chart(fig, use_container_width=True)
+
+# ---------------------------
+# 1. Price + SMA
+# ---------------------------
+def plot_price_sma(df: pd.DataFrame, ticker: str, sma_windows: List[int] = [20, 50]) -> None:
+    """
+    Plot closing prices and SMA overlays for a given ticker.
+
+    Args:
+        df (pd.DataFrame): Must contain ['Date', 'Ticker', 'Close'].
+        ticker (str): Ticker symbol to plot.
+        sma_windows (list[int], optional): List of SMA window sizes.
+    """
+    subset = df[df["Ticker"] == ticker].sort_values("Date")
+    
     fig = go.Figure()
-
     # Closing price
     fig.add_trace(go.Scatter(
-        x=dates,
-        y=prices,
-        mode='lines',
-        name='Close Price',
-        line=dict(color='green', width=2)
+        x=subset["Date"], y=subset["Close"], mode="lines",
+        name=f"{ticker} Close", line=dict(color="blue"),
+        hovertemplate="Date: %{x}<br>Close: %{y:$,.2f}<extra></extra>"
     ))
-
-    # SMA line
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=sma,
-        mode='lines',
-        name=sma.name,
-        line=dict(color='purple', width=2, dash='dash')
-    ))
-
-    # Layout
+    
+    # SMAs
+    for window in sma_windows:
+        sma_col = f"SMA_{window}"
+        if sma_col in subset.columns:
+            fig.add_trace(go.Scatter(
+                x=subset["Date"], y=subset[sma_col], mode="lines",
+                name=f"SMA {window}", line=dict(dash="dash"),
+                hovertemplate="Date: %{x}<br>SMA: %{y:$,.2f}<extra></extra>"
+            ))
+    
     fig.update_layout(
-        title='Stock Prices with SMA Overlay',
-        xaxis_title='Date',
-        yaxis_title='Closing Price',
-        template='plotly_white',
-        width=1200,
-        height=600
+        xaxis_title="Date", yaxis_title="Price",
+        template="plotly_white", hovermode="x unified"
     )
-
-    # Show interactive chart
-    fig.show()
-
-    # Save interactive HTML
-    save_path = os.path.join(save_folder, filename)
-    fig.write_html(save_path)
-    print(f"Interactive chart saved to: {save_path}")
-    pass
+    show_fig(fig, title=f"{ticker} Closing Prices & SMAs")
 
 
+# ---------------------------
+# 2. Highlight Streaks
+# ---------------------------
+def plot_streaks(df: pd.DataFrame, ticker: str) -> None:
+    """
+    Highlight positive/negative streaks on a stock chart.
 
-def highlight_streaks_interactive(df, dates, prices, save_folder="Graphs", filename="highlighted_streaks.html"):
-    """Highlight upward/downward price movements interactively and export as HTML."""
+    Args:
+        df (pd.DataFrame): Must contain ['Date', 'Ticker', 'Close', 'Streak'].
+        ticker (str): Ticker symbol to plot.
+    """
+    subset = df[df["Ticker"] == ticker].sort_values("Date")
     
-    # Ensure folder exists
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-    
-    df['Change'] = df[prices].diff().fillna(0)
-
     fig = go.Figure()
+    # Close line
+    fig.add_trace(go.Scatter(
+        x=subset["Date"], y=subset["Close"], mode="lines",
+        name=f"{ticker} Close", line=dict(color="blue")
+    ))
+    
+    # Positive & Negative streaks
+    for streak_type, color in [("Positive", "green"), ("Negative", "red")]:
+        mask = subset["Streak"].apply(lambda x: x > 0 if streak_type=="Positive" else x < 0)
+        if mask.any():
+            fig.add_trace(go.Scatter(
+                x=subset.loc[mask, "Date"], y=subset.loc[mask, "Close"],
+                mode="markers", marker=dict(color=color, size=7),
+                name=f"{streak_type} Streak",
+                hovertemplate="Date: %{x}<br>Close: %{y:$,.2f}<extra></extra>"
+            ))
+    
+    fig.update_layout(
+        xaxis_title="Date", yaxis_title="Price",
+        template="plotly_white", hovermode="x unified"
+    )
+    show_fig(fig, title=f"{ticker} Closing Prices with Streaks")
 
-    # Loop through each segment (day-to-day)
-    for i in range(1, len(df)):
-        color = 'green' if df['Change'].iloc[i] > 0 else 'red'
+
+# ---------------------------
+# 3. Annotate Buy/Sell Trades
+# ---------------------------
+def annotate_profits(df: pd.DataFrame, ticker: str, trades: List[Tuple[int, int]]) -> None:
+    """
+    Annotate buy/sell points for profit optimization.
+
+    Args:
+        df (pd.DataFrame): Must contain ['Date', 'Ticker', 'Close'].
+        ticker (str): Ticker symbol to plot.
+        trades (list[tuple[int,int]]): List of (buy_index, sell_index) tuples.
+    """
+    subset = df[df["Ticker"] == ticker].sort_values("Date").reset_index(drop=True)
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=subset["Date"], y=subset["Close"], mode="lines", name=f"{ticker} Close"
+    ))
+    
+    for buy_idx, sell_idx in trades:
         fig.add_trace(go.Scatter(
-            x=df[dates].iloc[i-1:i+1],
-            y=df[prices].iloc[i-1:i+1],
-            mode='lines',
-            line=dict(color=color, width=3),
-            showlegend=False
+            x=[subset.iloc[buy_idx]["Date"]], y=[subset.iloc[buy_idx]["Close"]],
+            mode="markers+text", marker=dict(color="green", size=12, symbol="triangle-up"),
+            text=["Buy"], textposition="top center", name="Buy"
         ))
-
+        fig.add_trace(go.Scatter(
+            x=[subset.iloc[sell_idx]["Date"]], y=[subset.iloc[sell_idx]["Close"]],
+            mode="markers+text", marker=dict(color="red", size=12, symbol="triangle-down"),
+            text=["Sell"], textposition="bottom center", name="Sell"
+        ))
+    
     fig.update_layout(
-        title="Close Price - Green for Up, Red for Down",
-        xaxis_title="Date",
-        yaxis_title="Close Price",
-        template="plotly_white",
-        width=1200,
-        height=600
+        xaxis_title="Date", yaxis_title="Price",
+        template="plotly_white", hovermode="x unified"
     )
-
-    # Show interactive chart
-    fig.show()
-
-    # Save interactive HTML
-    save_path = os.path.join(save_folder, filename)
-    fig.write_html(save_path)
-    print(f"Interactive chart saved to: {save_path}")
-    pass
+    show_fig(fig, title=f"{ticker} Buy/Sell Trades")
 
 
-def annotate_profits_interactive(df, dates, prices, sma, save_folder="Graphs", filename="buy_sell_signals.html"):
-    """Annotate buy/sell points for profit optimization and export interactive chart."""
+# ---------------------------
+# 4. Profit Comparison
+# ---------------------------
+def plot_profit_comparison(df: pd.DataFrame) -> None:
+    """
+    Interactive bar chart comparing single vs multiple transaction profits per ticker.
 
-    # Ensure folder exists
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
+    Args:
+        df (pd.DataFrame): Must contain ['Ticker', 'MaxProfit_Single', 'MaxProfit_Multiple'].
+    """
+    if df.empty:
+        print("Profit DataFrame is empty. Skipping plot.")
+        return
 
-    buy_signals = []
-    sell_signals = []
-    flag = -1  # -1: no position, 1: holding, 0: sold
-
-    for i in range(len(df)):
-        # Buy signal: Close crosses above SMA
-        if df[prices].iloc[i] > df[sma].iloc[i]:
-            if flag != 1:  # only buy if not already holding
-                buy_signals.append(df[prices].iloc[i])
-                sell_signals.append(np.nan)
-                flag = 1
-            else:
-                buy_signals.append(np.nan)
-                sell_signals.append(np.nan)
-
-        # Sell signal: Close crosses below SMA
-        elif df[prices].iloc[i] < df[sma].iloc[i]:
-            if flag != 0:  # only sell if holding
-                buy_signals.append(np.nan)
-                sell_signals.append(df[prices].iloc[i])
-                flag = 0
-            else:
-                buy_signals.append(np.nan)
-                sell_signals.append(np.nan)
-        else:
-            buy_signals.append(np.nan)
-            sell_signals.append(np.nan)
-
-    df['Buy'] = buy_signals
-    df['Sell'] = sell_signals
+    required_cols = {"Ticker", "MaxProfit_Single", "MaxProfit_Multiple"}
+    if not required_cols.issubset(df.columns):
+        raise ValueError(f"DataFrame must contain columns: {required_cols}")
 
     fig = go.Figure()
-
-    # Plot Close Price
-    fig.add_trace(go.Scatter(
-        x=df[dates],
-        y=df[prices],
-        mode='lines',
-        name='Close Price',
-        line=dict(color='blue', width=2)
-    ))
-
-    # Plot SMA line
-    fig.add_trace(go.Scatter(
-        x=df[dates],
-        y=df[sma],
-        mode='lines',
-        name=sma,
-        line=dict(color='orange', width=2, dash='dash')
-    ))
-
-    # Plot Buy signals
-    fig.add_trace(go.Scatter(
-        x=df[dates],
-        y=df['Buy'],
-        mode='markers',
-        name='Buy Signal',
-        marker=dict(symbol='triangle-up', color='green', size=12)
-    ))
-
-    # Plot Sell signals
-    fig.add_trace(go.Scatter(
-        x=df[dates],
-        y=df['Sell'],
-        mode='markers',
-        name='Sell Signal',
-        marker=dict(symbol='triangle-down', color='red', size=12)
-    ))
-
-    # Layout
+    for col, name, color in zip(
+        ["MaxProfit_Single", "MaxProfit_Multiple"],
+        ["Single Transaction", "Multiple Transactions"],
+        ["royalblue", "orange"]
+    ):
+        fig.add_trace(go.Bar(
+            x=df["Ticker"],
+            y=df[col],
+            name=name,
+            marker_color=color,
+            text=[f"{val:.2f}" for val in df[col]],
+            textposition="auto",
+            hovertemplate="%{x}<br>"+name+": %{y:.2f}<extra></extra>"
+        ))
+    
     fig.update_layout(
-        title="Stock Buy/Sell Signals Based on SMA Strategy",
-        xaxis_title="Date",
-        yaxis_title="Price",
+        xaxis_title="Ticker",
+        yaxis_title="Profit",
+        barmode="group",
         template="plotly_white",
-        width=1300,
-        height=600
+        hovermode="x unified",
+        yaxis=dict(autorange=True, title_standoff=10)
     )
-
-    # Show interactive chart
-    fig.show()
-
-    # Save interactive HTML
-    save_path = os.path.join(save_folder, filename)
-    fig.write_html(save_path)
-    print(f"Interactive chart saved to: {save_path}")
-    pass
-
+    show_fig(fig, title="Profit Comparison: Single vs Multiple Transactions")

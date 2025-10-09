@@ -1,0 +1,203 @@
+
+################################################################################
+# VALIDATION TEST SUITE
+# Testing analytics.py and profit.py implementations
+################################################################################
+
+================================================================================
+TEST CASE 1: Daily Returns - Manual Calculation
+================================================================================
+Prices:          [100, 105, 103, 110, 108]
+Expected returns: ['NaN', '0.050000', '-0.019048', '0.067961', '-0.018182']
+Actual returns:   ['NaN', '0.050000', '-0.019048', '0.067961', '-0.018182']
+
+✓ PASSED
+
+================================================================================
+TEST CASE 2: Daily Returns - Compare with pandas pct_change()
+================================================================================
+Sample data (first 5 rows):
+        Date Ticker  Close
+0 2024-01-01   AAPL    150
+1 2024-01-02   AAPL    152
+2 2024-01-03   AAPL    151
+3 2024-01-04   AAPL    155
+4 2024-01-05   AAPL    153
+
+Expected (pandas): [        nan  0.01333333 -0.00657895  0.02649007 -0.01290323]
+Actual (ours):     [        nan  0.01333333 -0.00657895  0.02649007 -0.01290323]
+
+✓ PASSED
+
+================================================================================
+TEST CASE 3: SMA - Manual Calculation (window=3)
+================================================================================
+Prices:      [10, 12, 14, 13, 15, 16, 14]
+Expected SMA: ['NaN', 'NaN', '12.0000', '13.0000', '14.0000', '14.6667', '15.0000']
+Actual SMA:   ['NaN', 'NaN', '12.0000', '13.0000', '14.0000', '14.6667', '15.0000']
+
+✓ PASSED
+
+================================================================================
+TEST CASE 4: SMA - Compare with pandas rolling().mean()
+================================================================================
+Window size: 20
+Data points: 50
+Expected (first 25): [         nan          nan          nan          nan          nan
+          nan          nan          nan          nan          nan
+          nan          nan          nan          nan          nan
+          nan          nan          nan          nan 101.51189329
+ 101.38904146 101.26181403 101.10557858 100.80195423 100.48281841]
+Actual (first 25):   [         nan          nan          nan          nan          nan
+          nan          nan          nan          nan          nan
+          nan          nan          nan          nan          nan
+          nan          nan          nan          nan 101.51189329
+ 101.38904146 101.26181403 101.10557858 100.80195423 100.48281841]
+
+✓ PASSED
+
+================================================================================
+TEST CASE 5: SMA - Corner Cases
+================================================================================
+
+Corner Case 5a: Data shorter than SMA window
+Prices: [100, 102, 101], Window: 5
+Expected: All NaN
+Actual: [nan, nan, nan]
+✓ PASSED
+
+Corner Case 5b: Window size equals data length
+Prices: [100, 105, 103, 110, 108], Window: 5
+Expected: [NaN, NaN, NaN, NaN, 105.2]
+Actual: [nan, nan, nan, nan, 105.2]
+✓ PASSED
+
+Corner Case 5c: Window size = 1
+Prices: [100, 105, 103], Window: 1
+Expected: [100, 105, 103]
+Actual: [100.0, 105.0, 103.0]
+✓ PASSED
+
+✓ ALL CORNER CASES PASSED
+
+================================================================================
+TEST CASE 6: Streak Detection - Manual Calculation
+================================================================================
+Prices:  [100, 105, 110, 108, 105, 102, 106, 106, 110]
+Returns: ['NaN', '0.0500', '0.0476', '-0.0182', '-0.0278', '-0.0286', '0.0392', '0.0000', '0.0377']
+Expected Streaks: [nan, 1, 2, -1, -2, -3, 1, 0, 1]
+Actual Streaks:   [nan, 1.0, 2.0, -1.0, -2.0, -3.0, 1.0, 0.0, 1.0]
+
+✓ PASSED
+
+================================================================================
+TEST CASE 6b: Streak Detection - Corner Cases
+================================================================================
+Single-day streak: [nan] -> PASS
+Constant streak: [nan, 0.0, 0.0, 0.0] -> PASS
+Zero-return streak: [nan, 0.0, 0.0] -> PASS
+
+✓ ALL STREAK CORNER CASES PASSED
+
+================================================================================
+TEST CASE 7: Max Profit Single Transaction - Manual Calculation
+================================================================================
+Prices: [100, 120, 90, 110, 85, 130, 95]
+Best strategy: Buy at 85 (index 4), Sell at 130 later
+Expected max profit: 45.0
+Actual max profit:   45.0
+
+✓ PASSED
+
+================================================================================
+TEST CASE 7b: Max Profit Single Transaction - Robust Check
+================================================================================
+Prices: [100, 120, 90, 110, 85, 130, 95]
+Expected profit: 45.0 (Buy: 85.0, Sell: 130.0)
+Actual profit:   45 (Buy: 85, Sell: 130)
+Buy date: 2024-01-05T00:00:00.000000000, Sell date: 2024-01-06T00:00:00.000000000
+
+✓ PASSED
+
+================================================================================
+TEST CASE 8: Max Profit Multiple Transactions - Manual Calculation
+================================================================================
+Prices: [100, 120, 90, 110, 85, 130, 95, 105]
+Profitable moves:
+  100 → 120: +20
+  90 → 110: +20
+  85 → 130: +45
+  95 → 105: +10
+Expected total profit: 95.0
+Actual total profit:   95.0
+
+✓ PASSED
+
+================================================================================
+TEST CASE 9: Profit Calculations - Corner Cases
+================================================================================
+
+Corner Case 9a: Constant prices
+Prices: [100, 100, 100, 100]
+Expected: Single=0.0, Multiple=0.0
+Actual: Single=0.0, Multiple=0.0
+✓ PASSED
+
+Corner Case 9b: Strictly decreasing prices
+Prices: [100, 90, 80, 70, 60]
+Expected: Single=0.0, Multiple=0.0
+Actual: Single=0.0, Multiple=0.0
+✓ PASSED
+
+Corner Case 9c: Only two prices
+Prices: [100, 150]
+Expected: Single=50.0, Multiple=50.0
+Actual: Single=50.0, Multiple=50.0
+✓ PASSED
+
+✓ ALL CORNER CASES PASSED
+
+================================================================================
+TEST CASE 11: Profit Vectorization Check
+================================================================================
+Single Tx -> Naive: 655, Vectorized: 655.0
+Multiple Tx -> Naive: 865, Vectorized: 865.0
+✓ PASSED
+
+================================================================================
+TEST CASE 10: Annual Risk-Return Metrics - Manual Calculation
+================================================================================
+Daily returns (sample): [0.01, -0.005, 0.015, 0.002, -0.01]
+
+Manual calculation:
+  Annual Return: 1.033200
+  Annual Volatility: 0.127095
+  Sharpe Ratio: 7.893293
+
+Our implementation:
+  Annual Return: 1.033200
+  Annual Volatility: 0.127095
+  Sharpe Ratio: 7.893293
+
+✓ PASSED
+
+################################################################################
+# TEST SUMMARY
+################################################################################
+✓ PASS   | Daily Returns - Manual
+✓ PASS   | Daily Returns - Pandas
+✓ PASS   | SMA - Manual (window=3)
+✓ PASS   | SMA - Pandas Rolling
+✓ PASS   | SMA - Corner Cases
+✓ PASS   | Streaks - Manual
+✓ PASS   | Streaks - Corner Cases
+✓ PASS   | Profit Single - Manual
+✓ PASS   | Profit Single - Robust Check
+✓ PASS   | Profit Multiple - Manual
+✓ PASS   | Profit - Corner Cases
+✓ PASS   | Profit - Vectorization Check
+✓ PASS   | Annual Metrics - Manual
+
+13/13 tests passed (100.0%)
+
+🎉 All validation tests passed! Implementations are verified correct.

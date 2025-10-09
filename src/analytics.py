@@ -1,10 +1,30 @@
+"""
+Analytics module for Stock Market Trend Analysis.
+
+Contains functions for:
+- Daily returns calculation
+- Simple Moving Average (SMA)
+- Streak detection
+- Annual risk-return computation
+"""
+
 import pandas as pd
 import numpy as np
-from config import CONFIG  # Import project config
+import logging
+from config import CONFIG  # Project configuration
+
+# Setup logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 def should_keep_debug() -> bool:
-    """Helper toggle to decide if debug/manual/vectorized cols are kept."""
+    """
+    Check if debug/manual/vectorized columns should be kept.
+
+    Returns:
+        bool: True if debug is enabled in CONFIG, else False
+    """
     return CONFIG.get("keep_debug", False)
 
 
@@ -13,102 +33,144 @@ def calculate_daily_returns(df: pd.DataFrame) -> pd.DataFrame:
     Compute daily returns per ticker.
 
     Adds:
-        - 'Daily_Return_manual' (if keep_debug enabled)
+        - 'Daily_Return_manual' (if debug enabled)
         - 'Daily_Return' (default efficient version)
+
+    Args:
+        df (pd.DataFrame): Must contain ['Ticker', 'Close']
+
+    Returns:
+        pd.DataFrame: Original DataFrame with added daily return columns
     """
     df = df.copy()
 
     if should_keep_debug():
+        # Manual loop version for debugging
         for ticker, group in df.groupby("Ticker"):
             closes = group["Close"].tolist()
             returns = [np.nan]
             for i in range(1, len(closes)):
                 prev, curr = closes[i - 1], closes[i]
-                ret = (curr - prev) / prev if prev != 0 else np.nan
-                returns.append(ret)
+                returns.append((curr - prev) / prev if prev != 0 else np.nan)
             df.loc[group.index, "Daily_Return_manual"] = returns
 
-    # Efficient pandas version
+    # Efficient vectorized pandas version
     df["Daily_Return"] = df.groupby("Ticker")["Close"].pct_change()
 
     if CONFIG.get("enable_logging", True):
-        print("Daily returns calculated.")
+        logger.info("Daily returns calculated.")
     return df
 
 
-def calculate_sma(df: pd.DataFrame, windows=None) -> pd.DataFrame:
+def calculate_sma(df: pd.DataFrame, windows: list[int] | None = None) -> pd.DataFrame:
     """
-    Compute SMA (Simple Moving Average) per ticker.
+    Compute Simple Moving Averages (SMA) for multiple window sizes per ticker.
 
     Adds:
-        - SMA_{window}_manual (if keep_debug enabled)
-        - SMA_{window} (efficient pandas version)
+        - SMA_{window}_manual   : Naive O(n·k) implementation (for clarity/debug)
+        - SMA_{window}_sliding  : Sliding window O(n) implementation (more efficient)
+        - SMA_{window}          : Efficient pandas rolling (default)
+
+    Args:
+        df (pd.DataFrame): Must contain ['Ticker', 'Close']
+        windows (list[int], optional): SMA window sizes. Defaults to CONFIG['sma_windows']
+
+    Returns:
+        pd.DataFrame: DataFrame with SMA columns added
     """
     df = df.copy()
     if windows is None:
         windows = CONFIG.get("sma_windows", [20, 50])
 
     for window in windows:
+        if window < 1:
+            raise ValueError("SMA window must be at least 1.")
+
         if should_keep_debug():
             manual_col = f"SMA_{window}_manual"
+            sliding_col = f"SMA_{window}_sliding"
+
             for ticker, group in df.groupby("Ticker"):
                 closes = group["Close"].tolist()
-                sma_vals = []
-                for i in range(len(closes)):
-                    if i < window - 1:
-                        sma_vals.append(np.nan)
-                    else:
-                        sma_vals.append(np.mean(closes[i - window + 1 : i + 1]))
-                df.loc[group.index, manual_col] = sma_vals
 
-        # Efficient pandas version
-        pandas_col = f"SMA_{window}"
-        df[pandas_col] = df.groupby("Ticker")["Close"].transform(
-            lambda x: x.rolling(window=window).mean()
+                # Naive O(n·k) manual computation
+                sma_naive = [
+                    np.nan if i < window - 1 else np.mean(closes[i - window + 1: i + 1])
+                    for i in range(len(closes))
+                ]
+
+                # Sliding window O(n) computation
+                window_sum = 0
+                sma_sliding = []
+                for i in range(len(closes)):
+                    window_sum += closes[i]
+                    if i >= window:
+                        window_sum -= closes[i - window]
+                    sma_sliding.append(window_sum / window if i >= window - 1 else np.nan)
+
+                df.loc[group.index, manual_col] = sma_naive
+                df.loc[group.index, sliding_col] = sma_sliding
+
+        # Efficient pandas rolling version
+        df[f"SMA_{window}"] = df.groupby("Ticker")["Close"].transform(
+            lambda x: x.rolling(window=window, min_periods=window).mean()
         )
 
     if CONFIG.get("enable_logging", True):
-        print(f"SMA calculated for windows: {windows}")
-
+        logger.info(f"SMA calculated for windows: {windows}")
     return df
 
 
 def detect_streaks(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Detect streaks of consecutive positive/negative returns.
+    Detect consecutive positive/negative daily return streaks.
 
     Adds:
-        - 'Streak_manual' and 'Streak_numpy' (if keep_debug enabled)
-        - 'Streak_pandas' (efficient)
-        - 'Streak' (default, used in pipeline)
+        - 'Streak_manual', 'Streak_numpy' (if debug enabled)
+        - 'Streak_pandas' (internal)
+        - 'Streak' (default column)
+
+    Args:
+        df (pd.DataFrame): Must contain ['Ticker', 'Daily_Return']
+
+    Returns:
+        pd.DataFrame: DataFrame with streak columns
     """
     df = df.copy()
 
     if should_keep_debug():
-        # Manual version
-        for ticker, group in df.groupby("Ticker"):
+        # Manual loop streak detection
+        def manual_streak(series):
             streaks = []
-            current_streak = 0
-            for ret in group["Daily_Return"].tolist():
+            current = 0
+            for ret in series:
                 if pd.isna(ret):
                     streaks.append(np.nan)
-                    continue
-                if ret > 0:
-                    current_streak = current_streak + 1 if current_streak >= 0 else 1
+                    current = 0
+                elif ret > 0:
+                    current = current + 1 if current >= 0 else 1
+                    streaks.append(current)
                 elif ret < 0:
-                    current_streak = current_streak - 1 if current_streak <= 0 else -1
+                    current = current - 1 if current <= 0 else -1
+                    streaks.append(current)
                 else:
-                    current_streak = 0
-                streaks.append(current_streak)
-            df.loc[group.index, "Streak_manual"] = streaks
+                    streaks.append(0)
+                    current = 0
+            return streaks
 
-        # Vectorized numpy transform version
-        def vectorized_streak(series):
+        df["Streak_manual"] = df.groupby("Ticker")["Daily_Return"].transform(manual_streak)
+
+        # Numpy vectorized version
+        def numpy_streak(series):
             arr = np.sign(series.fillna(0).to_numpy())
             streaks = np.zeros_like(arr, dtype=float)
             current = 0
+            mask_nan = series.isna().to_numpy()
             for i in range(len(arr)):
-                if arr[i] == 0:
+                if mask_nan[i]:
+                    streaks[i] = np.nan
+                    current = 0
+                elif arr[i] == 0:
                     streaks[i] = 0
                     current = 0
                 elif arr[i] > 0:
@@ -117,25 +179,76 @@ def detect_streaks(df: pd.DataFrame) -> pd.DataFrame:
                 else:
                     current = current - 1 if current <= 0 else -1
                     streaks[i] = current
-            streaks[np.isnan(series.to_numpy())] = np.nan
             return streaks
 
-        df["Streak_numpy"] = df.groupby("Ticker")["Daily_Return"].transform(vectorized_streak)
+        df["Streak_numpy"] = df.groupby("Ticker")["Daily_Return"].transform(numpy_streak)
 
-    # Efficient pandas version
+    # Pandas-efficient default streak computation
     df["Direction"] = np.sign(df["Daily_Return"])
-    df["Group"] = df.groupby("Ticker")["Direction"].diff().ne(0).cumsum()
-    df["Streak_pandas"] = df.groupby(["Ticker", "Group"]).cumcount() + 1
-    df.loc[df["Direction"] < 0, "Streak_pandas"] *= -1
-    df.loc[df["Direction"] == 0, "Streak_pandas"] = 0
-    df.drop(columns=["Group", "Direction"], inplace=True)
+    streak_values = []
+    for ticker, group in df.groupby("Ticker", sort=False):
+        dir_vals = group["Direction"].to_numpy()
+        streak = np.full_like(dir_vals, np.nan, dtype=float)
+        current = 0
+        for i, d in enumerate(dir_vals):
+            if np.isnan(d):
+                current = 0
+            elif d == 0:
+                streak[i] = 0
+                current = 0
+            elif d > 0:
+                current = current + 1 if current >= 0 else 1
+                streak[i] = current
+            else:
+                current = current - 1 if current <= 0 else -1
+                streak[i] = current
+        streak_values.extend(streak)
 
+    df["Streak_pandas"] = streak_values
     df["Streak"] = df["Streak_pandas"]
 
+    # Clean up temporary columns if not in debug
     if not should_keep_debug():
-        df.drop(columns=["Streak_pandas"], inplace=True)
+        df.drop(columns=["Streak_pandas", "Direction"], inplace=True)
 
     if CONFIG.get("enable_logging", True):
-        print("Streaks detected. Default 'Streak' column created.")
+        logger.info("Streaks detected. Default 'Streak' column created.")
 
     return df
+
+
+def calculate_annual_risk_return(
+    df: pd.DataFrame, risk_free_rate: float = 0.03, trading_days: int = 252
+) -> pd.DataFrame:
+    """
+    Calculate annualized return, volatility, and Sharpe ratio per ticker.
+
+    Args:
+        df (pd.DataFrame): Must contain ['Ticker', 'Daily_Return']
+        risk_free_rate (float): Annual risk-free rate (default 0.03)
+        trading_days (int): Trading days per year (default 252)
+
+    Returns:
+        pd.DataFrame: DataFrame with ['Ticker', 'Annual_Return', 'Annual_Volatility', 'Sharpe_Ratio']
+    """
+    summary = []
+
+    for ticker, group in df.groupby("Ticker"):
+        daily_ret = group["Daily_Return"].dropna()
+        if daily_ret.empty:
+            continue
+        annual_return = daily_ret.mean() * trading_days
+        annual_volatility = daily_ret.std() * np.sqrt(trading_days)
+        sharpe_ratio = ((annual_return - risk_free_rate) / annual_volatility
+                        if annual_volatility != 0 else 0)
+        summary.append({
+            "Ticker": ticker,
+            "Annual_Return": annual_return,
+            "Annual_Volatility": annual_volatility,
+            "Sharpe_Ratio": sharpe_ratio
+        })
+
+    risk_return_df = pd.DataFrame(summary)
+    if CONFIG.get("enable_logging", True):
+        logger.info("Annual risk-return calculated.")
+    return risk_return_df

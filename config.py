@@ -1,3 +1,5 @@
+# config.py
+
 CONFIG = {
     # ------------------------
     # Tickers and Date Range
@@ -27,9 +29,4 @@ CONFIG = {
     # ------------------------
     "sma_windows": [5, 20, 50],
     "enable_logging": True,
-
-    # ------------------------
-    # Toggle Debug Columns
-    # ------------------------
-    "keep_debug": False,   # If False → drops manual/vectorized debug cols
 }

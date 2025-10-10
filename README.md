@@ -132,11 +132,6 @@ streamlit run main.py
 jupyter notebook notebook/EDA.ipynb
 ```
 
-### 🧪 Option 4: Run Validation Tests
-```bash
-python src/validation.py
-```
-
 ## ⚙️ Global Settings Configuration
 
 The app provides flexible configuration options:
@@ -272,3 +267,4 @@ For issues and questions:
 ---
 
 **Built with ❤️ for transparent financial data analysis and algorithmic trading education**
+   

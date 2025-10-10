@@ -300,7 +300,7 @@ def plot_annual_risk_return(risk_return_df: pd.DataFrame) -> Optional[go.Figure]
     return fig
 
 
-# Best Buy/Sell Points (Multiple Transactions)
+#5. Best Buy/Sell Points (Multiple Transactions)
 def plot_best_buy_sell(df, ticker: str):
     subset = df[df["Ticker"] == ticker].sort_values("Date").reset_index(drop=True)
     prices = subset["Close"].values

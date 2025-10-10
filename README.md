@@ -67,35 +67,45 @@ INF1002-Programming/
 ## 🛠 Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd INF1002-Programming
    ```
 
-2. **Create virtual environment** (recommended)
+2. **Create virtual environment** *(recommended)*
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 ## 🎯 Quick Start
 
-### Option 1: Streamlit Dashboard (Recommended)
+### 🌐 Option 1: Use the Web App *(No Installation Needed)*
+
+👉 [Launch App](https://stonk-analyzer.streamlit.app/)
+
+### 💻 Option 2: Streamlit Dashboard *(Run Locally)*
+
 ```bash
 streamlit run main.py
 ```
 
-### Option 2: Jupyter Notebook Analysis
+### 📓 Option 3: Jupyter Notebook Analysis
+
 ```bash
 jupyter notebook notebook/EDA.ipynb
 ```
 
-### Option 3: Run Validation Tests
+### 🧪 Option 4: Run Validation Tests
+
 ```bash
 python src/validation.py
 ```

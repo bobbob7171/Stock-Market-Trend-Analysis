@@ -5,7 +5,7 @@ Streamlit dashboard for Stock Market Trend Analysis:
 - Load data from CSV or Yahoo Finance
 - Clean, validate, and process stock data
 - Calculate daily returns, SMA, streaks, risk-return, and profits
-- Visualize trends, charts, and summary metrics
+- Visualize trends, charts, and summary metrics with delta pills
 - Enable downloads of CSVs and Plotly charts
 """
 
@@ -41,6 +41,35 @@ def validate_tickers(tickers: list) -> list:
         except Exception:
             st.warning(f"Ticker {t} is invalid or cannot be fetched.")
     return valid
+
+def calculate_period_change(subset):
+    """Calculate price change over the period"""
+    if len(subset) < 2:
+        return 0
+    start_price = subset['Close'].iloc[0]
+    end_price = subset['Close'].iloc[-1]
+    return ((end_price - start_price) / start_price) * 100
+
+def calculate_ytd_change(subset):
+    """Calculate YTD change if data includes current year"""
+    current_year = datetime.date.today().year
+    ytd_data = subset[subset['Date'].dt.year == current_year]
+    if len(ytd_data) < 2:
+        return None
+    start_price = ytd_data['Close'].iloc[0]
+    end_price = ytd_data['Close'].iloc[-1]
+    return ((end_price - start_price) / start_price) * 100
+
+def calculate_volatility_change(subset):
+    """Calculate change in volatility (comparing first half vs second half)"""
+    if len(subset) < 20:
+        return None
+    mid_point = len(subset) // 2
+    first_half_vol = subset['Daily_Return'].iloc[:mid_point].std()
+    second_half_vol = subset['Daily_Return'].iloc[mid_point:].std()
+    if first_half_vol == 0:
+        return None
+    return ((second_half_vol - first_half_vol) / first_half_vol) * 100
 
 
 # Page Setup
@@ -215,21 +244,106 @@ else:
     profit_summary = pd.DataFrame()
 
 # Tabs
-tabs = st.tabs(["Data Quality", "Analytics & Streaks", "Risk-Return", "Profits"])
+tabs = st.tabs(["📊 Overview", "📝 Data Quality", "📈 Analytics & Streaks", "⚖️ Risk-Return", "💰 Profits"])
+
+# Tab 0: Overview Dashboard
+with tabs[0]:
+    st.subheader("📊 Portfolio Overview")
+    
+    # Summary metrics across all tickers
+    if not comparison_data.empty:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        # Portfolio-wide metrics
+        total_tickers = len(tickers)
+        avg_return = comparison_data.groupby('Ticker')['Daily_Return'].mean().mean() * 252 * 100
+        avg_volatility = comparison_data.groupby('Ticker')['Daily_Return'].std().mean() * (252**0.5) * 100
+        
+        # Calculate period returns for each ticker
+        period_returns = []
+        for t in tickers:
+            t_data = comparison_data[comparison_data['Ticker'] == t].sort_values('Date')
+            if len(t_data) >= 2:
+                period_ret = calculate_period_change(t_data)
+                period_returns.append(period_ret)
+        
+        avg_period_return = sum(period_returns) / len(period_returns) if period_returns else 0
+        
+        col1.metric("Total Tickers", total_tickers)
+        col2.metric("Avg. Annual Return", f"{avg_return:.2f}%", 
+                   delta=f"{avg_period_return:.2f}% Period")
+        col3.metric("Avg. Volatility", f"{avg_volatility:.2f}%")
+        col4.metric("Trading Days", len(comparison_data['Date'].unique()))
+    
+    # Individual ticker summary cards
+    st.markdown("### Ticker Performance Summary")
+    
+    # Create cards for each ticker
+    for ticker in tickers:
+        ticker_data = analytics_data[analytics_data['Ticker'] == ticker].sort_values('Date')
+        if ticker_data.empty:
+            continue
+            
+        with st.expander(f"📈 {ticker} - Quick Stats", expanded=True):
+            col1, col2, col3, col4, col5 = st.columns(5)
+            
+            # Current/Latest price
+            latest_price = ticker_data['Close'].iloc[-1]
+            period_change = calculate_period_change(ticker_data)
+            
+            col1.metric("Latest Price", f"${latest_price:.2f}", 
+                       delta=f"{period_change:.2f}%")
+            
+            # High/Low with delta from current
+            high_price = ticker_data['Close'].max()
+            low_price = ticker_data['Close'].min()
+            high_delta = ((latest_price - high_price) / high_price * 100)
+            low_delta = ((latest_price - low_price) / low_price * 100)
+            
+            col2.metric("Period High", f"${high_price:.2f}", 
+                       delta=f"{high_delta:.2f}%" if high_delta != 0 else None)
+            col3.metric("Period Low", f"${low_price:.2f}", 
+                       delta=f"{low_delta:.2f}%" if low_delta != 0 else None)
+            
+            # Volatility metrics
+            current_vol = ticker_data['Daily_Return'].std() * (252**0.5) * 100
+            vol_change = calculate_volatility_change(ticker_data)
+            
+            col4.metric("Volatility (Annual)", f"{current_vol:.2f}%",
+                       delta=f"{vol_change:.1f}%" if vol_change else None,
+                       delta_color="inverse")  # Higher volatility is typically bad
+            
+            # Win rate
+            positive_days = (ticker_data['Daily_Return'] > 0).sum()
+            total_days = len(ticker_data[ticker_data['Daily_Return'].notna()])
+            win_rate = (positive_days / total_days * 100) if total_days > 0 else 0
+            
+            col5.metric("Win Rate", f"{win_rate:.1f}%",
+                       delta=f"{positive_days}/{total_days} days")
 
 # Tab 1: Data Quality
-with tabs[0]:
+with tabs[1]:
     st.subheader("📝 Data Quality Report")
+    
+    # Summary metrics for data quality
+    col1, col2, col3 = st.columns(3)
+    total_records = len(cleaned)
+    complete_tickers = cleaned['Ticker'].nunique()
+    date_range = (cleaned['Date'].max() - cleaned['Date'].min()).days
+    
+    col1.metric("Total Records", f"{total_records:,}")
+    col2.metric("Complete Tickers", complete_tickers)
+    col3.metric("Date Range (Days)", date_range)
     
     # View Data Quality Table (Outlier column removed for front-end display)
     with st.expander("View Data Quality Table", expanded=True):
         dq_report = data_quality_report(cleaned).copy()
         # Remove the Outlier column for display only
         dq_report_display = dq_report.drop(columns=["Outliers (Z%)"], errors="ignore")
-        st.dataframe(format_df(dq_report_display))
+        st.dataframe(format_df(dq_report_display), use_container_width=True)
     
     # Download Data / Charts (full data including Outlier)
-    with st.expander("Download Data/Charts", expanded=True):
+    with st.expander("Download Data/Charts", expanded=False):
         st.download_button(
             "💾 Download Cleaned Data",
             cleaned.to_csv(index=False, float_format="%.2f").encode(),
@@ -238,7 +352,7 @@ with tabs[0]:
 
 
 # Tab 2: Analytics & Streaks
-with tabs[1]:
+with tabs[2]:
     st.subheader("📈 Price & Streak Charts")
     if not tickers:
         st.warning("No tickers available for chart plotting.")
@@ -249,11 +363,31 @@ with tabs[1]:
             
             # Price + SMA section
             with st.expander(f"{selected_ticker} — Price + SMA Chart", expanded=True):
-                col1, col2, col3 = st.columns(3)
-                col1.metric("High Price", f"${subset['Close'].max():.2f}")
-                col2.metric("Low Price", f"${subset['Close'].min():.2f}")
-                total_return = (subset['Close'].iloc[-1] / subset['Close'].iloc[0] - 1) * 100
-                col3.metric("Total Return", f"{total_return:.2f}%")
+                col1, col2, col3, col4 = st.columns(4)
+                
+                high_price = subset['Close'].max()
+                low_price = subset['Close'].min()
+                current_price = subset['Close'].iloc[-1]
+                total_return = calculate_period_change(subset)
+                
+                # Calculate distance from high/low
+                from_high = ((current_price - high_price) / high_price * 100)
+                from_low = ((current_price - low_price) / low_price * 100)
+                
+                col1.metric("High Price", f"${high_price:.2f}",
+                           delta=f"{from_high:.1f}% from high")
+                col2.metric("Low Price", f"${low_price:.2f}",
+                           delta=f"{from_low:.1f}% from low")
+                col3.metric("Total Return", f"{total_return:.2f}%",
+                           delta="Period Performance")
+                
+                # YTD Return if applicable
+                ytd_return = calculate_ytd_change(subset)
+                if ytd_return is not None:
+                    col4.metric("YTD Return", f"{ytd_return:.2f}%",
+                               delta="Year to Date")
+                else:
+                    col4.metric("Current Price", f"${current_price:.2f}")
                 
                 sma_windows = ticker_settings.get(selected_ticker, {}).get("sma_windows", [])
                 fig_price_sma = plot_price_sma(analytics_data, selected_ticker, sma_windows)
@@ -276,15 +410,23 @@ with tabs[1]:
             # Streak section
             with st.expander(f"{selected_ticker} — Streak Chart", expanded=True):
                 longest_up = subset["Streak"].loc[subset["Streak"] > 0].max() or 0
-                longest_down = subset["Streak"].loc[subset["Streak"] < 0].min() or 0
+                longest_down = abs(subset["Streak"].loc[subset["Streak"] < 0].min() or 0)
                 pos_days = (subset["Daily_Return"] > 0).sum()
                 neg_days = (subset["Daily_Return"] < 0).sum()
+                total_days = pos_days + neg_days
+                win_rate = (pos_days / total_days * 100) if total_days > 0 else 0
                 
                 col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Longest Up Streak", longest_up)
-                col2.metric("Longest Down Streak", longest_down)
-                col3.metric("Positive Days", pos_days)
-                col4.metric("Negative Days", neg_days)
+                col1.metric("Longest Up Streak", f"{longest_up} days",
+                           delta="Consecutive gains")
+                col2.metric("Longest Down Streak", f"{longest_down} days",
+                           delta="Consecutive losses",
+                           delta_color="inverse")
+                col3.metric("Positive Days", pos_days,
+                           delta=f"{win_rate:.1f}% win rate")
+                col4.metric("Negative Days", neg_days,
+                           delta=f"{100-win_rate:.1f}% loss rate",
+                           delta_color="inverse")
                 
                 fig_streaks = plot_streaks(analytics_data, selected_ticker)
                 
@@ -294,7 +436,8 @@ with tabs[1]:
                     "Longest_Up_Streak": longest_up,
                     "Longest_Down_Streak": longest_down,
                     "Total_Up_Days": pos_days,
-                    "Total_Down_Days": neg_days
+                    "Total_Down_Days": neg_days,
+                    "Win_Rate": win_rate
                 }])
                 st.download_button(
                     f"💾 Download Streak Summary (CSV)",
@@ -311,9 +454,9 @@ with tabs[1]:
                     )
 
 
-# Tab 3: Risk-Return (Refactored with metrics & unique keys)
-with tabs[2]:
-    st.subheader("📊 Annual Risk vs Return (Sharpe Highlighted)")
+# Tab 3: Risk-Return
+with tabs[3]:
+    st.subheader("⚖️ Annual Risk vs Return (Sharpe Highlighted)")
     if not risk_return_summary.empty:
         selected_rr_tickers = st.multiselect(
             "Select Ticker(s) for Risk-Return Chart", tickers, default=tickers
@@ -321,23 +464,29 @@ with tabs[2]:
         rr_chart_df = risk_return_summary[risk_return_summary["Ticker"].isin(selected_rr_tickers)]
         with st.expander("View Metrics & Risk-Return Chart", expanded=True):
             if not rr_chart_df.empty:
-                # -------------------------
-                # Metrics at the top
-                # -------------------------
+                # Metrics for each ticker with meaningful deltas
                 for t, row in rr_chart_df.iterrows():
                     col1, col2, col3 = st.columns(3)
-                    col1.metric(f"{row['Ticker']} — Annual Return", f"{row['Annual_Return']:.2%}")
-                    col2.metric(f"{row['Ticker']} — Volatility", f"{row['Annual_Volatility']:.2%}")
-                    col3.metric(f"{row['Ticker']} — Sharpe Ratio", f"{row['Sharpe_Ratio']:.2f}")
+                    
+                    # Calculate risk-free rate excess for context
+                    excess_return = row['Annual_Return'] - 0.03  # Risk-free rate is 3%
+                    
+                    col1.metric(f"{row['Ticker']} — Annual Return", 
+                               f"{row['Annual_Return']:.2%}",
+                               delta=f"{excess_return:.2%} excess")
+                    col2.metric(f"{row['Ticker']} — Volatility", 
+                               f"{row['Annual_Volatility']:.2%}",
+                               delta=f"Risk level",
+                               delta_color="off")
+                    col3.metric(f"{row['Ticker']} — Sharpe Ratio", 
+                               f"{row['Sharpe_Ratio']:.2f}",
+                               delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
+                               delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
                 
-                # -------------------------
                 # Plot Risk-Return Chart
-                # -------------------------
                 fig_risk_return = plot_annual_risk_return(rr_chart_df)
                 
-                # -------------------------
                 # Download Buttons
-                # -------------------------
                 st.download_button(
                     "💾 Download Risk-Return Summary (CSV)",
                     rr_chart_df.to_csv(index=False, float_format="%.4f").encode(),
@@ -356,8 +505,8 @@ with tabs[2]:
 
 
 # Tab 4: Profits
-with tabs[3]:
-    st.subheader("📈 Best Buy/Sell Opportunities")
+with tabs[4]:
+    st.subheader("💰 Best Buy/Sell Opportunities")
     if not tickers:
         st.warning("No tickers available for buy/sell plotting.")
     else:
@@ -380,7 +529,13 @@ with tabs[3]:
                     
                     col1.metric("Best Buy Date", buy_date_str)
                     col2.metric("Best Sell Date", sell_date_str)
-                    col3.metric("Return %", f"{row['Return_Pct']:.2f}%")
+                    col3.metric("Return %", f"{row['Return_Pct']:.2f}%",
+                               delta="Single trade opportunity")
+                    
+                    # Add holding period
+                    if pd.notna(row['Best_Buy_Date']) and pd.notna(row['Best_Sell_Date']):
+                        holding_days = (pd.to_datetime(row['Best_Sell_Date']) - pd.to_datetime(row['Best_Buy_Date'])).days
+                        col4.metric("Holding Period", f"{holding_days} days")
                 
                 # Plot chart
                 fig_buy_sell = plot_best_buy_sell(analytics_data, selected_profit_ticker)
@@ -394,11 +549,23 @@ with tabs[3]:
     st.subheader("💰 Profit Comparison")
     with st.expander("View Profit Metrics & Chart", expanded=True):
         if not profit_summary.empty:
-            # Metrics at the top
+            # Metrics for each ticker with deltas
             for idx, row in profit_summary.iterrows():
                 col1, col2 = st.columns(2)
-                col1.metric(f"{row['Ticker']} — Max Profit (Single)", f"${row['MaxProfit_Single']:.2f}")
-                col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", f"${row['MaxProfit_Multiple']:.2f}")
+                
+                # Calculate profit multiplier (multiple vs single)
+                if row['MaxProfit_Single'] > 0:
+                    profit_multiplier = row['MaxProfit_Multiple'] / row['MaxProfit_Single']
+                    multiplier_text = f"{profit_multiplier:.2f}x multiple"
+                else:
+                    multiplier_text = "N/A"
+                
+                col1.metric(f"{row['Ticker']} — Max Profit (Single)", 
+                           f"${row['MaxProfit_Single']:.2f}",
+                           delta="Best single trade")
+                col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
+                           f"${row['MaxProfit_Multiple']:.2f}",
+                           delta=multiplier_text)
             
             # Profit Comparison Chart
             fig_profit = plot_profit_comparison(profit_summary)

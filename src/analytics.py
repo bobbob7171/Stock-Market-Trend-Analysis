@@ -27,7 +27,7 @@ def should_keep_debug() -> bool:
     """
     return CONFIG.get("keep_debug", False)
 
-
+#1. Daily Returns Calculation
 def calculate_daily_returns(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute daily returns per ticker.
@@ -61,7 +61,7 @@ def calculate_daily_returns(df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Daily returns calculated.")
     return df
 
-
+#2. Simple Moving Average (SMA) Calculation
 def calculate_sma(df: pd.DataFrame, windows: list[int] | None = None) -> pd.DataFrame:
     """
     Compute Simple Moving Averages (SMA) for multiple window sizes per ticker.
@@ -120,7 +120,7 @@ def calculate_sma(df: pd.DataFrame, windows: list[int] | None = None) -> pd.Data
         logger.info(f"SMA calculated for windows: {windows}")
     return df
 
-
+#3. Streak Detection
 def detect_streaks(df: pd.DataFrame) -> pd.DataFrame:
     """
     Detect consecutive positive/negative daily return streaks.
@@ -216,7 +216,7 @@ def detect_streaks(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
+#4. Annual Risk-Return Calculation
 def calculate_annual_risk_return(
     df: pd.DataFrame, risk_free_rate: float = 0.03, trading_days: int = 252
 ) -> pd.DataFrame:

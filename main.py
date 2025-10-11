@@ -478,7 +478,9 @@ with tabs[3]:
         
         if selected_rr_tickers:
             # Get data for selected tickers from individual analysis
-            rr_chart_df = individual_risk_return[individual_risk_return["Ticker"].isin(selected_rr_tickers)]
+            rr_chart_df = individual_risk_return[individual_risk_return["Ticker"].isin(selected_rr_tickers)].copy()
+            # IMPORTANT: Reset index so the plot function can properly identify best Sharpe
+            rr_chart_df = rr_chart_df.reset_index(drop=True)
             
             with st.expander("View Risk-Return Metrics & Chart", expanded=True):
                 if not rr_chart_df.empty:

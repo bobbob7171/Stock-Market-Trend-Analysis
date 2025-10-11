@@ -354,7 +354,7 @@ with tabs[1]:
         st.dataframe(format_df(dq_report_display), use_container_width=True)
     
     # Download Data / Charts (full data including Outlier)
-    with st.expander("Download Data/Charts", expanded=False):
+    with st.expander("Download Data", expanded=False):
         st.download_button(
             "💾 Download Cleaned Data",
             cleaned.to_csv(index=False, float_format="%.2f").encode(),

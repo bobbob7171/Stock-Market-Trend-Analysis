@@ -353,7 +353,7 @@ with tabs[1]:
         dq_report_display = dq_report.drop(columns=["Outliers (Z%)"], errors="ignore")
         st.dataframe(format_df(dq_report_display), use_container_width=True)
     
-    # Download Data / Charts (full data including Outlier)
+    # Download Data (full data including Outlier)
     with st.expander("Download Data", expanded=False):
         st.download_button(
             "💾 Download Cleaned Data",
@@ -469,71 +469,25 @@ with tabs[3]:
     
     # Always show individual ticker data
     if not individual_risk_return.empty:
-        selected_rr_ticker = st.selectbox(
-            "Select Ticker for Risk-Return Analysis", 
+        selected_rr_tickers = st.multiselect(
+            "Select Ticker(s) for Risk-Return Analysis", 
             tickers, 
+            default=tickers,
             key="risk_return_selector"
         )
         
-        # Get data for selected ticker
-        ticker_rr_data = individual_risk_return[individual_risk_return["Ticker"] == selected_rr_ticker]
-        
-        with st.expander(f"{selected_rr_ticker} — Risk-Return Metrics & Chart", expanded=True):
-            if not ticker_rr_data.empty:
-                row = ticker_rr_data.iloc[0]
-                col1, col2, col3 = st.columns(3)
-                
-                # Calculate risk-free rate excess for context
-                excess_return = row['Annual_Return'] - 0.03  # Risk-free rate is 3%
-                
-                col1.metric(f"{row['Ticker']} — Annual Return", 
-                           f"{row['Annual_Return']:.2%}",
-                           delta=f"{excess_return:.2%} excess")
-                col2.metric(f"{row['Ticker']} — Volatility", 
-                           f"{row['Annual_Volatility']:.2%}",
-                           delta=f"Risk level",
-                           delta_color="off")
-                col3.metric(f"{row['Ticker']} — Sharpe Ratio", 
-                           f"{row['Sharpe_Ratio']:.2f}",
-                           delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
-                           delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
-                
-                # Plot Risk-Return Chart for selected ticker
-                fig_risk_return = plot_annual_risk_return(ticker_rr_data)
-                
-                # Download Buttons
-                st.download_button(
-                    f"💾 Download {selected_rr_ticker} Risk-Return (CSV)",
-                    ticker_rr_data.to_csv(index=False, float_format="%.4f").encode(),
-                    f"{selected_rr_ticker}_risk_return.csv"
-                )
-                if fig_risk_return:
-                    st.download_button(
-                        f"💾 Download {selected_rr_ticker} Risk-Return Chart (HTML)",
-                        data=fig_risk_return.to_html(include_plotlyjs='cdn'),
-                        file_name=f"{selected_rr_ticker}_risk_return.html"
-                    )
-        
-        # If there's comparison data available, show multi-ticker comparison
-        if not risk_return_summary.empty and len(tickers) > 1:
-            st.markdown("---")
-            st.subheader("📊 Multi-Ticker Comparison (Overlapping Period)")
-            st.info(f"Comparing tickers over common date range for fair comparison")
+        if selected_rr_tickers:
+            # Get data for selected tickers from individual analysis
+            rr_chart_df = individual_risk_return[individual_risk_return["Ticker"].isin(selected_rr_tickers)]
             
-            selected_rr_tickers = st.multiselect(
-                "Select Ticker(s) for Comparison Chart", 
-                tickers, 
-                default=tickers,
-                key="multi_risk_return"
-            )
-            rr_chart_df = risk_return_summary[risk_return_summary["Ticker"].isin(selected_rr_tickers)]
-            
-            with st.expander("View Multi-Ticker Comparison", expanded=True):
+            with st.expander("View Risk-Return Metrics & Chart", expanded=True):
                 if not rr_chart_df.empty:
-                    # Metrics for each ticker
-                    for t, row in rr_chart_df.iterrows():
+                    # Metrics for each selected ticker
+                    for idx, row in rr_chart_df.iterrows():
                         col1, col2, col3 = st.columns(3)
-                        excess_return = row['Annual_Return'] - 0.03
+                        
+                        # Calculate risk-free rate excess for context
+                        excess_return = row['Annual_Return'] - 0.03  # Risk-free rate is 3%
                         
                         col1.metric(f"{row['Ticker']} — Annual Return", 
                                    f"{row['Annual_Return']:.2%}",
@@ -547,19 +501,28 @@ with tabs[3]:
                                    delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
                                    delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
                     
-                    fig_risk_return_multi = plot_annual_risk_return(rr_chart_df)
+                    # Plot Risk-Return Chart
+                    fig_risk_return = plot_annual_risk_return(rr_chart_df)
+                    
+                    # Download Buttons
+                    csv_filename = f"{selected_rr_tickers[0]}_risk_return.csv" if len(selected_rr_tickers) == 1 else "risk_return_comparison.csv"
+                    html_filename = f"{selected_rr_tickers[0]}_risk_return.html" if len(selected_rr_tickers) == 1 else "risk_return_comparison.html"
                     
                     st.download_button(
-                        "💾 Download Multi-Ticker Risk-Return (CSV)",
+                        "💾 Download Risk-Return Data (CSV)",
                         rr_chart_df.to_csv(index=False, float_format="%.4f").encode(),
-                        "risk_return_comparison.csv"
+                        csv_filename
                     )
-                    if fig_risk_return_multi:
+                    if fig_risk_return:
                         st.download_button(
-                            "💾 Download Multi-Ticker Chart (HTML)",
-                            data=fig_risk_return_multi.to_html(include_plotlyjs='cdn'),
-                            file_name="risk_return_comparison.html"
+                            "💾 Download Risk-Return Chart (HTML)",
+                            data=fig_risk_return.to_html(include_plotlyjs='cdn'),
+                            file_name=html_filename
                         )
+                else:
+                    st.warning("No risk-return data available for selected tickers.")
+        else:
+            st.info("Please select at least one ticker to view risk-return analysis.")
     else:
         st.warning("No risk-return data available.")
 
@@ -613,79 +576,57 @@ with tabs[4]:
     
     # Always show individual profit data
     if not individual_profit.empty:
-        selected_profit_summary_ticker = st.selectbox(
-            "Select Ticker for Profit Metrics", 
+        selected_profit_tickers = st.multiselect(
+            "Select Ticker(s) for Profit Analysis", 
             tickers, 
+            default=tickers,
             key="profit_summary_selector"
         )
         
-        ticker_profit_data = individual_profit[individual_profit["Ticker"] == selected_profit_summary_ticker]
-        
-        with st.expander(f"{selected_profit_summary_ticker} — Profit Metrics", expanded=True):
-            if not ticker_profit_data.empty:
-                row = ticker_profit_data.iloc[0]
-                col1, col2 = st.columns(2)
-                
-                # Calculate profit multiplier (multiple vs single)
-                if row['MaxProfit_Single'] > 0:
-                    profit_multiplier = row['MaxProfit_Multiple'] / row['MaxProfit_Single']
-                    multiplier_text = f"{profit_multiplier:.2f}x multiple"
-                else:
-                    multiplier_text = "N/A"
-                
-                col1.metric(f"{row['Ticker']} — Max Profit (Single)", 
-                           f"${row['MaxProfit_Single']:.2f}",
-                           delta="Best single trade")
-                col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
-                           f"${row['MaxProfit_Multiple']:.2f}",
-                           delta=multiplier_text)
-                
-                # Download single ticker profit data
-                st.download_button(
-                    f"💾 Download {selected_profit_summary_ticker} Profit (CSV)",
-                    ticker_profit_data.to_csv(index=False, float_format="%.2f").encode(),
-                    f"{selected_profit_summary_ticker}_profit.csv"
-                )
-        
-        # If there's comparison data available, show multi-ticker comparison
-        if not profit_summary.empty and len(tickers) > 1:
-            st.markdown("---")
-            st.subheader("📊 Multi-Ticker Profit Comparison (Overlapping Period)")
-            st.info(f"Comparing profit opportunities over common date range")
+        if selected_profit_tickers:
+            profit_chart_df = individual_profit[individual_profit["Ticker"].isin(selected_profit_tickers)]
             
-            with st.expander("View Multi-Ticker Profit Comparison", expanded=True):
-                # Metrics for each ticker in comparison
-                for idx, row in profit_summary.iterrows():
-                    col1, col2 = st.columns(2)
+            with st.expander("View Profit Metrics & Chart", expanded=True):
+                if not profit_chart_df.empty:
+                    # Metrics for each selected ticker
+                    for idx, row in profit_chart_df.iterrows():
+                        col1, col2 = st.columns(2)
+                        
+                        # Calculate profit multiplier (multiple vs single)
+                        if row['MaxProfit_Single'] > 0:
+                            profit_multiplier = row['MaxProfit_Multiple'] / row['MaxProfit_Single']
+                            multiplier_text = f"{profit_multiplier:.2f}x multiple"
+                        else:
+                            multiplier_text = "N/A"
+                        
+                        col1.metric(f"{row['Ticker']} — Max Profit (Single)", 
+                                   f"${row['MaxProfit_Single']:.2f}",
+                                   delta="Best single trade")
+                        col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
+                                   f"${row['MaxProfit_Multiple']:.2f}",
+                                   delta=multiplier_text)
                     
-                    # Calculate profit multiplier (multiple vs single)
-                    if row['MaxProfit_Single'] > 0:
-                        profit_multiplier = row['MaxProfit_Multiple'] / row['MaxProfit_Single']
-                        multiplier_text = f"{profit_multiplier:.2f}x multiple"
-                    else:
-                        multiplier_text = "N/A"
+                    # Profit Comparison Chart
+                    fig_profit = plot_profit_comparison(profit_chart_df)
                     
-                    col1.metric(f"{row['Ticker']} — Max Profit (Single)", 
-                               f"${row['MaxProfit_Single']:.2f}",
-                               delta="Best single trade")
-                    col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
-                               f"${row['MaxProfit_Multiple']:.2f}",
-                               delta=multiplier_text)
-                
-                # Profit Comparison Chart
-                fig_profit = plot_profit_comparison(profit_summary)
-                
-                # Download Buttons
-                st.download_button(
-                    "💾 Download Multi-Ticker Profit (CSV)",
-                    profit_summary.to_csv(index=False, float_format="%.2f").encode(),
-                    "profit_comparison.csv"
-                )
-                if fig_profit:
+                    # Download Buttons
+                    csv_filename = f"{selected_profit_tickers[0]}_profit.csv" if len(selected_profit_tickers) == 1 else "profit_comparison.csv"
+                    html_filename = f"{selected_profit_tickers[0]}_profit.html" if len(selected_profit_tickers) == 1 else "profit_comparison.html"
+                    
                     st.download_button(
-                        "💾 Download Profit Comparison Chart (HTML)",
-                        data=fig_profit.to_html(include_plotlyjs='cdn'),
-                        file_name="profit_comparison.html"
+                        "💾 Download Profit Data (CSV)",
+                        profit_chart_df.to_csv(index=False, float_format="%.2f").encode(),
+                        csv_filename
                     )
+                    if fig_profit:
+                        st.download_button(
+                            "💾 Download Profit Chart (HTML)",
+                            data=fig_profit.to_html(include_plotlyjs='cdn'),
+                            file_name=html_filename
+                        )
+                else:
+                    st.warning("No profit data available for selected tickers.")
+        else:
+            st.info("Please select at least one ticker to view profit analysis.")
     else:
         st.warning("No profit data available.")

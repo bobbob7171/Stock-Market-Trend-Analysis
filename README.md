@@ -1,51 +1,83 @@
 # 📈 Stock Market Trend Analysis
 
-A comprehensive Python application for analyzing stock market trends, calculating trading profits, and visualizing financial data. Built with Streamlit for interactive dashboarding and robust data processing capabilities.
+![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-Enabled-brightgreen)
+![License](https://img.shields.io/badge/license-Educational-lightgrey)
+![Tests](https://img.shields.io/badge/tests-13%2F13%20passed-success)
+
+A comprehensive **Python application** for analyzing stock market trends, calculating trading profits, and visualizing financial data.
+Built with **Streamlit** for interactive dashboards and **vectorized O(n)** algorithms for robust and transparent financial computation.
+
+---
 
 ## 🎯 What Problem Does This Solve?
 
-Traditional stock analysis platforms suffer from several limitations:
+Traditional stock analysis platforms exhibit several key limitations:
 
-**🔒 Transparency Gap**: Commercial platforms hide their algorithms, making verification impossible  
-**💸 Accessibility Barriers**: Professional tools are expensive and complex  
-**🔄 Reproducibility Issues**: Black-box calculations prevent custom analysis  
-**🎓 Educational Limitations**: Existing tools prioritize trading over learning
+**🔒 Transparency Gap** — Commercial platforms hide their algorithms, making independent verification impossible
+**💸 Accessibility Barriers** — Professional tools are expensive and require advanced expertise
+**🔄 Reproducibility Issues** — Black-box calculations prevent custom or educational analysis
+**🎓 Educational Limitations** — Existing tools prioritize trading over understanding
 
-### Our Solution:
-- **📖 Transparent Algorithms**: Every calculation validated step-by-step
-- **🆓 Zero-Cost Access**: Web deployment removes all barriers  
-- **🔬 Educational Focus**: Built-in validation and debugging modes
-- **🧩 Modular Verification**: Each component independently testable
-- **🌐 Open Access**: [Use instantly online](https://stonk-analyzer.streamlit.app/) - no installation needed
+### ✅ Our Solution
+
+* **📖 Transparent Algorithms** — Every calculation validated step-by-step
+* **🆓 Zero-Cost Access** — Web deployment removes all barriers
+* **🔬 Educational Focus** — Built-in validation and debugging modes
+* **🧩 Modular Verification** — Each component independently testable
+* **🌐 Open Access** — [Use instantly online](https://stonk-analyzer.streamlit.app/) – no installation required
+
+> *Developed as part of the **INF1002 Programming Fundamentals** module (Weeks 3–7 deliverables).
+> Demonstrates modular design, O(n) algorithmic optimization, and transparency in financial computing.*
+
+---
+
+## 🎥 User Manual & Tutorial
+
+**📹 Video Guide:** [Watch the complete tutorial](https://youtu.be/kBWDgTUPgP4)
+*Learn how to use all features in under 5 minutes:*
+
+* Data loading & configuration
+* Technical analysis interpretation
+* Profit optimization strategies
+* Exporting results and reports
+
+---
 
 ## 🚀 Features
 
 ### 📊 Data Management
-- **Multi-source Data Import**: Fetch real-time data from Yahoo Finance or upload custom CSV files
-- **Automated Data Cleaning**: Handle missing values, align with trading calendars, detect outliers using Z-score and IQR methods
-- **Data Validation**: Comprehensive quality checks and schema validation with zero missing values
-- **Flexible Date & SMA Ranges**: Per-ticker customization with global override options
-- **Trading Day Alignment**: Restrict analysis to official NYSE trading days only
 
-### 📈 Analytics & Calculations
-- **Daily Returns**: Vectorized calculation with O(n) performance and manual debugging modes
-- **Technical Indicators**: Simple Moving Averages (SMA) with customizable windows and crossover signals
-- **Trend Analysis**: Streak detection for consecutive up/down days with momentum insights
-- **Risk Metrics**: Annualized returns, volatility, and Sharpe ratios for portfolio optimization
-- **Profit Optimization**: Single (O(n) sliding window) and multiple transaction (O(n) vectorized) profit calculations
+* **Multi-Source Data Import:** Fetch live data from Yahoo Finance or upload custom CSV files
+* **Automated Cleaning:** Handle missing values, align trading calendars, and detect outliers (Z-score/IQR)
+* **Data Validation:** Comprehensive quality checks and schema verification
+* **Flexible Date & SMA Ranges:** Per-ticker customization with global overrides
+* **Trading Day Alignment:** Restrict analysis to official NYSE trading days
 
-### 📊 Visualization
-- **Interactive Charts**: Plotly-based visualizations with hover details
-- **Price + SMA**: Overlay technical indicators with buy/sell signals
-- **Trend Streaks**: Color-coded upward/downward trend segments
-- **Risk-Return Scatter**: Sharpe ratio highlighting for optimal investments
-- **Profit Comparison**: Single vs. multiple transaction performance analysis
-- **Buy/Sell Indicators**: Optimal trading points based on local minima/maxima
+### 📈 Technical Analysis & Calculations
 
-### 💾 Export Capabilities
-- **CSV Downloads**: Cleaned data, analytics results, profit summaries
-- **Interactive HTML**: Export Plotly charts for offline viewing
-- **Quality Reports**: Data validation and coverage statistics
+* **Daily Returns:** Vectorized O(n) performance with manual debugging mode
+* **SMA Indicators:** Customizable moving-average windows with crossover detection
+* **Trend Streaks:** Consecutive up/down streak analysis with momentum insights
+* **Risk Metrics:** Annualized returns, volatility, and Sharpe ratios
+* **Profit Optimization:** Single (O(n) sliding window) and multiple (O(n) vectorized) transaction strategies
+
+### 📉 Visualization & Insights
+
+* **Interactive Charts:** Plotly-based graphs with hover details
+* **Price + SMA Overlay:** Visualize crossovers with buy/sell markers
+* **Trend Streaks:** Color-coded segments for upward/downward trends
+* **Risk-Return Scatter:** Visual Sharpe ratio analysis for optimal investments
+* **Profit Comparison:** Single vs. multiple-transaction performance plots
+* **Exportable Visuals:** Download charts as standalone interactive HTML
+
+### 💾 Export & Reporting
+
+* **CSV Outputs:** Cleaned data, analytics results, profit summaries
+* **Interactive HTML Charts:** For offline exploration
+* **Validation Reports:** Automatic data-quality and integrity summaries
+
+---
 
 ## 🏗️ System Architecture
 
@@ -83,188 +115,189 @@ INF1002-Programming/
 └── requirements.txt                # Dependencies
 ```
 
+---
+
 ## ⚡ Performance & Results
 
 ### 🎯 Key Achievements
-- **100% Calculation Accuracy**: 13/13 validation tests passed with complete algorithmic transparency
-- **O(n) Efficiency**: Vectorized operations achieve 10-100x speedup vs naive implementations
-- **Zero Missing Values**: Processed 5,000+ trading records with complete data integrity
-- **Real Insights**: Identified TSLA multiple-transaction profits of 2500% vs single transactions
+
+* **100 % Calculation Accuracy** — 13 / 13 validation tests passed
+* **O(n) Efficiency** — Vectorized operations achieve 10–100× speedup over naive loops
+* **Zero Missing Values** — Processed 5,000+ trading records with full integrity
+* **Real Insights** — Identified TSLA multiple-transaction profits > 2500 %
 
 ### 📈 Analytical Insights
-- **TSLA**: Highest volatility (σ = 0.045) with massive profit potential in active trading
-- **JPM**: Best risk-adjusted returns (Sharpe = 2.1) for conservative investors  
-- **Streak Patterns**: Average upward momentum duration of 3.2 days across all stocks
-- **Strategy Performance**: Multiple transactions consistently outperform single transactions by 200-600%
+
+| Stock          | Volatility (σ) | Sharpe Ratio | Key Finding                                 |
+| :------------- | :------------- | :----------- | :------------------------------------------ |
+| **TSLA**       | 0.045          | 1.8          | Highest volatility, best for active trading |
+| **JPM**        | 0.017          | **2.1**      | Best risk-adjusted return                   |
+| **AAPL**       | 0.022          | 1.5          | Stable long-term growth                     |
+| **All Stocks** | —              | —            | Avg. upward streak: 3.2 days                |
+
+> Multiple-transaction strategies consistently outperform single transactions by 200–600 %.
+
+---
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
+1. **Clone the Repository**
+
    ```bash
    git clone <repository-url>
-   cd INF1002-Programming
+   cd stonk-analyzer
    ```
 
-2. **Create virtual environment** *(recommended)*
+2. **Create Virtual Environment** *(recommended)*
+
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   source venv/bin/activate   # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+3. **Install Dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
-## 🎯 Quick Start
+### 🧩 `requirements.txt` (excerpt)
+
+```text
+yfinance
+pandas
+matplotlib
+seaborn
+scipy
+pandas_market_calendars
+tabulate
+plotly
+streamlit
+```
+
+---
+
+## 🚀 Quick Start
 
 ### 🌐 Option 1: Use the Web App *(No Installation Needed)*
+
 👉 **[Launch App](https://stonk-analyzer.streamlit.app/)**
+*Ideal for quick exploratory analysis and classroom demonstrations.*
 
-*Perfect for beginners and quick analysis*
+### 💻 Option 2: Run Locally
 
-### 💻 Option 2: Streamlit Dashboard *(Run Locally)*
 ```bash
 streamlit run main.py
 ```
 
-### 📓 Option 3: Jupyter Notebook Analysis
+### 📓 Option 3: Notebook Exploration
+
 ```bash
 jupyter notebook notebook/EDA.ipynb
 ```
 
-## ⚙️ Global Settings Configuration
+### 🎥 Option 4: Watch Tutorial
 
-The app provides flexible configuration options:
+📹 [5-Minute User Guide](https://youtu.be/kBWDgTUPgP4)
 
-### 📅 Global Date Range
-- **Apply to All**: Set consistent start/end dates across all tickers
-- **Override Individual**: Custom dates for specific stocks when needed
-- **Smart Defaults**: Pre-configured with optimal analysis periods
+---
 
-### 📊 SMA Window Settings  
-- **Global SMA Periods**: Apply same moving average windows to all stocks
-- **Common Presets**: Quick selection of popular periods (5, 20, 50 days)
-- **Custom Windows**: Define any combination of SMA periods for analysis
+## ⚙️ Configuration
 
-## 📊 Usage Guide
-
-### 📈 Data Sources
-
-**Yahoo Finance Integration**
-- Enter comma-separated tickers (e.g., `AAPL, MSFT, GOOGL`)
-- Set custom date ranges per ticker or use global settings
-- Configure SMA windows individually or apply globally
-
-**CSV Upload**
-- Support for multiple CSV files
-- Automatic ticker assignment
-- Schema validation with helpful error messages
-
-### 🔍 Key Analyses
-
-1. **Data Quality Assessment**
-   - Coverage of trading days
-   - Missing value analysis
-   - Outlier detection using Z-score and IQR methods
-
-2. **Technical Analysis**
-   - SMA crossover signals for trend identification
-   - Trend strength via streak detection and momentum analysis
-   - Volatility and return calculations for risk assessment
-
-3. **Profit Optimization**
-   - Single transaction: Buy low, sell high (O(n) sliding window)
-   - Multiple transactions: Capture all upward movements (O(n) vectorized)
-   - Comparative performance analysis across strategies
-
-4. **Risk Management**
-   - Annualized risk-return profiles with Sharpe ratios
-   - Portfolio efficiency analysis and optimization
-   - Visual identification of optimal risk-adjusted investments
-
-### 💾 Export Options
-
-All visualizations and data tables can be exported:
-- **CSV**: Raw data, analytics results, summaries
-- **HTML**: Interactive Plotly charts for offline presentation
-- **Validation Reports**: Test results and quality metrics
-
-## 🔧 Configuration
-
-Edit `config.py` to customize:
+Edit `config.py` to customize defaults:
 
 ```python
 CONFIG = {
     "tickers": ["AAPL", "MSFT", "GOOGL", "JPM", "TSLA"],
-    "start_date": "2022-01-01", 
+    "start_date": "2022-01-01",
     "end_date": "2025-01-01",
     "sma_windows": [5, 20, 50],
     "enable_logging": True,
     "validation_strictness": "high",
-    # ... additional settings
 }
 ```
 
-## 📈 Example Workflow
+### Global Settings
 
-1. **Configure Settings**: Set global analysis period and SMA windows
-2. **Load Data**: Fetch AAPL, MSFT, TSLA from Yahoo Finance (2022-2025)
-3. **Clean & Validate**: Automated processing with quality report (0 missing values)
-4. **Analyze Trends**: 20-day and 50-day SMA crossovers with buy/sell signals
-5. **Calculate Profits**: Compare single vs. multiple transaction strategies
-6. **Assess Risk**: Annualized volatility and Sharpe ratios for portfolio optimization  
-7. **Visualize**: Interactive charts with export options
-8. **Export**: Download results for reporting and further analysis
+* **📅 Date Range:** Apply globally or override per ticker
+* **📊 SMA Periods:** Common presets (5, 20, 50) or custom windows
+* **⚙️ Smart Defaults:** Optimized analysis ranges and logging options
+
+---
 
 ## 🧪 Testing & Validation
 
-The application includes comprehensive tests:
+Run all tests:
 
 ```bash
 python src/validation.py
 ```
 
-**Tests Cover**:
-- Daily returns calculation accuracy (pandas parity)
-- SMA computation against manual calculations  
-- Profit optimization algorithms (O(n) verification)
-- Edge cases and corner conditions
-- Performance benchmarking
-- Data integrity and schema validation
+### Coverage Includes
 
-**Results**: 13/13 tests passed (100% accuracy) with complete algorithmic transparency
+* Daily return accuracy (pandas parity)
+* SMA verification vs. manual computation
+* O(n) profit optimization algorithms
+* Edge-case handling and performance benchmarks
+* Schema validation and data-integrity checks
+
+**Results:** ✅ 13 / 13 tests passed — 100 % accuracy and transparency
+
+---
+
+## 📈 Example Workflow
+
+1. Configure global date range and SMA windows
+2. Load tickers (e.g., `AAPL, MSFT, TSLA`) via Yahoo Finance
+3. Clean and validate data (0 missing values)
+4. Analyze trends with SMA crossovers and buy/sell markers
+5. Compute profits (single vs multiple transactions)
+6. Assess risk (volatility + Sharpe ratios)
+7. Visualize results interactively
+8. Export CSV and HTML reports
+
+---
 
 ## 🎓 Educational Value
 
 This project demonstrates:
-- **Modular Python Design**: Separated concerns with data, analytics, visualization layers
-- **Algorithmic Efficiency**: O(n) implementations vs naive O(n²) approaches
-- **Financial Computing**: Accurate implementation of industry-standard formulas
-- **Validation-First Development**: Comprehensive testing ensures reliability
-- **Web Deployment**: Streamlit for accessible, interactive dashboards
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all validation tests pass
-5. Submit a pull request
-
-## 📄 License
-
-This project is for educational purposes as part of INF1002 Programming Module.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the validation test results
-2. Review data quality reports in the dashboard
-3. Ensure all dependencies are installed
-4. Verify Yahoo Finance API availability for real-time data
-5. Test global settings application in the web interface
+* **Modular Python Design:** Independent data, analytics, and visualization layers
+* **Algorithmic Efficiency:** O(n) vectorized implementations
+* **Financial Computing:** Accurate, industry-standard metrics
+* **Validation-First Development:** Comprehensive testing ensures reliability
+* **Accessible Web Deployment:** Streamlit for interactive, transparent dashboards
 
 ---
 
-**Built with ❤️ for transparent financial data analysis and algorithmic trading education**
+## 🤝 Contributing
+
+1. Fork this repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all validations pass
+5. Submit a pull request
+
+---
+
+## 📄 License
+
+This project is for **educational use** under the *INF1002 Programming Fundamentals* module.
+Not intended for commercial trading or financial advice.
+
+---
+
+## 🆘 Support
+
+If you encounter issues:
+
+1. 📹 Watch the [Tutorial](https://youtu.be/kBWDgTUPgP4)
+2. 🧾 Check validation reports in `data/validation/`
+3. ⚙️ Verify dependencies from `requirements.txt`
+4. 🌐 Ensure Yahoo Finance API availability
+5. 🧩 Review configuration settings in `config.py`
+
+---
+
+**Built with ❤️ for transparent, educational financial data analysis**
+**Team INF1002 — Stonk Analyzer (2025)**

@@ -350,7 +350,6 @@ with tabs[1]:
             "cleaned_data.csv"
         )
 
-
 # Tab 2: Analytics & Streaks
 with tabs[2]:
     st.subheader("📈 Price & Streak Charts")
@@ -453,7 +452,6 @@ with tabs[2]:
                         file_name=f"{selected_ticker}_streaks.html"
                     )
 
-
 # Tab 3: Risk-Return
 with tabs[3]:
     st.subheader("⚖️ Annual Risk vs Return (Sharpe Highlighted)")
@@ -503,7 +501,6 @@ with tabs[3]:
     else:
         st.warning("Risk-return summary is empty.")
 
-
 # Tab 4: Profits
 with tabs[4]:
     st.subheader("💰 Best Buy/Sell Opportunities")
@@ -518,7 +515,11 @@ with tabs[4]:
         if selected_profit_ticker:
             with st.expander(f"{selected_profit_ticker} — Buy/Sell Chart", expanded=True):
                 # Display metrics at the top
-                ticker_profit = profit_summary[profit_summary["Ticker"] == selected_profit_ticker]
+                if not profit_summary.empty:
+                    ticker_profit = profit_summary[profit_summary["Ticker"] == selected_profit_ticker]
+                else:
+                    ticker_profit = pd.DataFrame()
+                    
                 if not ticker_profit.empty:
                     row = ticker_profit.iloc[0]
                     col1, col2, col3, col4 = st.columns(4)
@@ -536,6 +537,8 @@ with tabs[4]:
                     if pd.notna(row['Best_Buy_Date']) and pd.notna(row['Best_Sell_Date']):
                         holding_days = (pd.to_datetime(row['Best_Sell_Date']) - pd.to_datetime(row['Best_Buy_Date'])).days
                         col4.metric("Holding Period", f"{holding_days} days")
+                else:
+                    st.warning(f"No profit data available for {selected_profit_ticker}. This may be due to non-overlapping date ranges.")
                 
                 # Plot chart
                 fig_buy_sell = plot_best_buy_sell(analytics_data, selected_profit_ticker)

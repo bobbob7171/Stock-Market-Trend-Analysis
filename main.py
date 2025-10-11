@@ -217,31 +217,42 @@ else:
 analytics_data = calculate_daily_returns(cleaned)
 analytics_data = detect_streaks(analytics_data)
 
-# Determine common period for fair comparison
-if ticker_settings:
+# Calculate individual ticker metrics (always available)
+individual_risk_return = pd.DataFrame()
+individual_profit = pd.DataFrame()
+
+for ticker in tickers:
+    ticker_data = analytics_data[analytics_data["Ticker"] == ticker]
+    if not ticker_data.empty:
+        # Calculate risk-return for individual ticker
+        ticker_rr = calculate_annual_risk_return(ticker_data, risk_free_rate=0.03)
+        individual_risk_return = pd.concat([individual_risk_return, ticker_rr])
+        
+        # Calculate profit for individual ticker
+        ticker_profit = calculate_profits(ticker_data, [ticker])
+        individual_profit = pd.concat([individual_profit, ticker_profit])
+
+# Determine common period for fair comparison (optional, for multi-ticker comparison)
+comparison_data = pd.DataFrame()
+risk_return_summary = pd.DataFrame()
+profit_summary = pd.DataFrame()
+
+if ticker_settings and len(tickers) > 1:
     start_dates = [s["start_date"] for s in ticker_settings.values()]
     end_dates = [s["end_date"] for s in ticker_settings.values()]
     common_start = max(start_dates)
     common_end = min(end_dates)
 
-    if common_start > common_end:
-        st.warning("Tickers have no overlapping date range. Risk-return and profit comparison may not be accurate.")
-        comparison_data = pd.DataFrame()
-    else:
+    if common_start <= common_end:
         comparison_data = analytics_data[
             (analytics_data["Date"] >= pd.Timestamp(common_start)) &
             (analytics_data["Date"] <= pd.Timestamp(common_end))
         ]
-else:
-    comparison_data = pd.DataFrame()
-
-# Calculate risk-return and profit summary only for the comparison period
-if not comparison_data.empty:
-    risk_return_summary = calculate_annual_risk_return(comparison_data, risk_free_rate=0.03)
-    profit_summary = calculate_profits(comparison_data, tickers)
-else:
-    risk_return_summary = pd.DataFrame()
-    profit_summary = pd.DataFrame()
+        
+        # Calculate risk-return and profit summary for comparison period
+        if not comparison_data.empty:
+            risk_return_summary = calculate_annual_risk_return(comparison_data, risk_free_rate=0.03)
+            profit_summary = calculate_profits(comparison_data, tickers)
 
 # Tabs
 tabs = st.tabs(["📊 Overview", "📝 Data Quality", "📈 Analytics & Streaks", "⚖️ Risk-Return", "💰 Profits"])
@@ -251,18 +262,18 @@ with tabs[0]:
     st.subheader("📊 Portfolio Overview")
     
     # Summary metrics across all tickers
-    if not comparison_data.empty:
+    if not analytics_data.empty:
         col1, col2, col3, col4 = st.columns(4)
         
         # Portfolio-wide metrics
         total_tickers = len(tickers)
-        avg_return = comparison_data.groupby('Ticker')['Daily_Return'].mean().mean() * 252 * 100
-        avg_volatility = comparison_data.groupby('Ticker')['Daily_Return'].std().mean() * (252**0.5) * 100
+        avg_return = analytics_data.groupby('Ticker')['Daily_Return'].mean().mean() * 252 * 100
+        avg_volatility = analytics_data.groupby('Ticker')['Daily_Return'].std().mean() * (252**0.5) * 100
         
         # Calculate period returns for each ticker
         period_returns = []
         for t in tickers:
-            t_data = comparison_data[comparison_data['Ticker'] == t].sort_values('Date')
+            t_data = analytics_data[analytics_data['Ticker'] == t].sort_values('Date')
             if len(t_data) >= 2:
                 period_ret = calculate_period_change(t_data)
                 period_returns.append(period_ret)
@@ -273,7 +284,7 @@ with tabs[0]:
         col2.metric("Avg. Annual Return", f"{avg_return:.2f}%", 
                    delta=f"{avg_period_return:.2f}% Period")
         col3.metric("Avg. Volatility", f"{avg_volatility:.2f}%")
-        col4.metric("Trading Days", len(comparison_data['Date'].unique()))
+        col4.metric("Trading Days", len(analytics_data['Date'].unique()))
     
     # Individual ticker summary cards
     st.markdown("### Ticker Performance Summary")
@@ -455,51 +466,102 @@ with tabs[2]:
 # Tab 3: Risk-Return
 with tabs[3]:
     st.subheader("⚖️ Annual Risk vs Return (Sharpe Highlighted)")
-    if not risk_return_summary.empty:
-        selected_rr_tickers = st.multiselect(
-            "Select Ticker(s) for Risk-Return Chart", tickers, default=tickers
+    
+    # Always show individual ticker data
+    if not individual_risk_return.empty:
+        selected_rr_ticker = st.selectbox(
+            "Select Ticker for Risk-Return Analysis", 
+            tickers, 
+            key="risk_return_selector"
         )
-        rr_chart_df = risk_return_summary[risk_return_summary["Ticker"].isin(selected_rr_tickers)]
-        with st.expander("View Metrics & Risk-Return Chart", expanded=True):
-            if not rr_chart_df.empty:
-                # Metrics for each ticker with meaningful deltas
-                for t, row in rr_chart_df.iterrows():
-                    col1, col2, col3 = st.columns(3)
-                    
-                    # Calculate risk-free rate excess for context
-                    excess_return = row['Annual_Return'] - 0.03  # Risk-free rate is 3%
-                    
-                    col1.metric(f"{row['Ticker']} — Annual Return", 
-                               f"{row['Annual_Return']:.2%}",
-                               delta=f"{excess_return:.2%} excess")
-                    col2.metric(f"{row['Ticker']} — Volatility", 
-                               f"{row['Annual_Volatility']:.2%}",
-                               delta=f"Risk level",
-                               delta_color="off")
-                    col3.metric(f"{row['Ticker']} — Sharpe Ratio", 
-                               f"{row['Sharpe_Ratio']:.2f}",
-                               delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
-                               delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
+        
+        # Get data for selected ticker
+        ticker_rr_data = individual_risk_return[individual_risk_return["Ticker"] == selected_rr_ticker]
+        
+        with st.expander(f"{selected_rr_ticker} — Risk-Return Metrics & Chart", expanded=True):
+            if not ticker_rr_data.empty:
+                row = ticker_rr_data.iloc[0]
+                col1, col2, col3 = st.columns(3)
                 
-                # Plot Risk-Return Chart
-                fig_risk_return = plot_annual_risk_return(rr_chart_df)
+                # Calculate risk-free rate excess for context
+                excess_return = row['Annual_Return'] - 0.03  # Risk-free rate is 3%
+                
+                col1.metric(f"{row['Ticker']} — Annual Return", 
+                           f"{row['Annual_Return']:.2%}",
+                           delta=f"{excess_return:.2%} excess")
+                col2.metric(f"{row['Ticker']} — Volatility", 
+                           f"{row['Annual_Volatility']:.2%}",
+                           delta=f"Risk level",
+                           delta_color="off")
+                col3.metric(f"{row['Ticker']} — Sharpe Ratio", 
+                           f"{row['Sharpe_Ratio']:.2f}",
+                           delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
+                           delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
+                
+                # Plot Risk-Return Chart for selected ticker
+                fig_risk_return = plot_annual_risk_return(ticker_rr_data)
                 
                 # Download Buttons
                 st.download_button(
-                    "💾 Download Risk-Return Summary (CSV)",
-                    rr_chart_df.to_csv(index=False, float_format="%.4f").encode(),
-                    "risk_return_summary.csv"
+                    f"💾 Download {selected_rr_ticker} Risk-Return (CSV)",
+                    ticker_rr_data.to_csv(index=False, float_format="%.4f").encode(),
+                    f"{selected_rr_ticker}_risk_return.csv"
                 )
                 if fig_risk_return:
                     st.download_button(
-                        "💾 Download Risk-Return Chart (HTML)",
+                        f"💾 Download {selected_rr_ticker} Risk-Return Chart (HTML)",
                         data=fig_risk_return.to_html(include_plotlyjs='cdn'),
-                        file_name="annual_risk_return.html"
+                        file_name=f"{selected_rr_ticker}_risk_return.html"
                     )
-            else:
-                st.warning("No risk-return data available for selected tickers.")
+        
+        # If there's comparison data available, show multi-ticker comparison
+        if not risk_return_summary.empty and len(tickers) > 1:
+            st.markdown("---")
+            st.subheader("📊 Multi-Ticker Comparison (Overlapping Period)")
+            st.info(f"Comparing tickers over common date range for fair comparison")
+            
+            selected_rr_tickers = st.multiselect(
+                "Select Ticker(s) for Comparison Chart", 
+                tickers, 
+                default=tickers,
+                key="multi_risk_return"
+            )
+            rr_chart_df = risk_return_summary[risk_return_summary["Ticker"].isin(selected_rr_tickers)]
+            
+            with st.expander("View Multi-Ticker Comparison", expanded=True):
+                if not rr_chart_df.empty:
+                    # Metrics for each ticker
+                    for t, row in rr_chart_df.iterrows():
+                        col1, col2, col3 = st.columns(3)
+                        excess_return = row['Annual_Return'] - 0.03
+                        
+                        col1.metric(f"{row['Ticker']} — Annual Return", 
+                                   f"{row['Annual_Return']:.2%}",
+                                   delta=f"{excess_return:.2%} excess")
+                        col2.metric(f"{row['Ticker']} — Volatility", 
+                                   f"{row['Annual_Volatility']:.2%}",
+                                   delta=f"Risk level",
+                                   delta_color="off")
+                        col3.metric(f"{row['Ticker']} — Sharpe Ratio", 
+                                   f"{row['Sharpe_Ratio']:.2f}",
+                                   delta="Risk-adjusted" if row['Sharpe_Ratio'] > 1 else "Below 1.0",
+                                   delta_color="normal" if row['Sharpe_Ratio'] > 1 else "inverse")
+                    
+                    fig_risk_return_multi = plot_annual_risk_return(rr_chart_df)
+                    
+                    st.download_button(
+                        "💾 Download Multi-Ticker Risk-Return (CSV)",
+                        rr_chart_df.to_csv(index=False, float_format="%.4f").encode(),
+                        "risk_return_comparison.csv"
+                    )
+                    if fig_risk_return_multi:
+                        st.download_button(
+                            "💾 Download Multi-Ticker Chart (HTML)",
+                            data=fig_risk_return_multi.to_html(include_plotlyjs='cdn'),
+                            file_name="risk_return_comparison.html"
+                        )
     else:
-        st.warning("Risk-return summary is empty.")
+        st.warning("No risk-return data available.")
 
 # Tab 4: Profits
 with tabs[4]:
@@ -514,11 +576,8 @@ with tabs[4]:
         )
         if selected_profit_ticker:
             with st.expander(f"{selected_profit_ticker} — Buy/Sell Chart", expanded=True):
-                # Display metrics at the top
-                if not profit_summary.empty:
-                    ticker_profit = profit_summary[profit_summary["Ticker"] == selected_profit_ticker]
-                else:
-                    ticker_profit = pd.DataFrame()
+                # Display metrics at the top using individual data
+                ticker_profit = individual_profit[individual_profit["Ticker"] == selected_profit_ticker]
                     
                 if not ticker_profit.empty:
                     row = ticker_profit.iloc[0]
@@ -538,7 +597,7 @@ with tabs[4]:
                         holding_days = (pd.to_datetime(row['Best_Sell_Date']) - pd.to_datetime(row['Best_Buy_Date'])).days
                         col4.metric("Holding Period", f"{holding_days} days")
                 else:
-                    st.warning(f"No profit data available for {selected_profit_ticker}. This may be due to non-overlapping date ranges.")
+                    st.warning(f"No profit data available for {selected_profit_ticker}.")
                 
                 # Plot chart
                 fig_buy_sell = plot_best_buy_sell(analytics_data, selected_profit_ticker)
@@ -549,11 +608,22 @@ with tabs[4]:
                         file_name=f"{selected_profit_ticker}_buy_sell.html"
                     )
     
-    st.subheader("💰 Profit Comparison")
-    with st.expander("View Profit Metrics & Chart", expanded=True):
-        if not profit_summary.empty:
-            # Metrics for each ticker with deltas
-            for idx, row in profit_summary.iterrows():
+    st.markdown("---")
+    st.subheader("💰 Profit Summary")
+    
+    # Always show individual profit data
+    if not individual_profit.empty:
+        selected_profit_summary_ticker = st.selectbox(
+            "Select Ticker for Profit Metrics", 
+            tickers, 
+            key="profit_summary_selector"
+        )
+        
+        ticker_profit_data = individual_profit[individual_profit["Ticker"] == selected_profit_summary_ticker]
+        
+        with st.expander(f"{selected_profit_summary_ticker} — Profit Metrics", expanded=True):
+            if not ticker_profit_data.empty:
+                row = ticker_profit_data.iloc[0]
                 col1, col2 = st.columns(2)
                 
                 # Calculate profit multiplier (multiple vs single)
@@ -569,21 +639,53 @@ with tabs[4]:
                 col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
                            f"${row['MaxProfit_Multiple']:.2f}",
                            delta=multiplier_text)
-            
-            # Profit Comparison Chart
-            fig_profit = plot_profit_comparison(profit_summary)
-            
-            # Download Buttons
-            st.download_button(
-                "💾 Download Profit Summary (CSV)",
-                profit_summary.to_csv(index=False, float_format="%.2f").encode(),
-                "profit_summary.csv"
-            )
-            if fig_profit:
+                
+                # Download single ticker profit data
                 st.download_button(
-                    "💾 Download Profit Comparison Chart (HTML)",
-                    data=fig_profit.to_html(include_plotlyjs='cdn'),
-                    file_name="profit_comparison.html"
+                    f"💾 Download {selected_profit_summary_ticker} Profit (CSV)",
+                    ticker_profit_data.to_csv(index=False, float_format="%.2f").encode(),
+                    f"{selected_profit_summary_ticker}_profit.csv"
                 )
-        else:
-            st.warning("No profit data available.")
+        
+        # If there's comparison data available, show multi-ticker comparison
+        if not profit_summary.empty and len(tickers) > 1:
+            st.markdown("---")
+            st.subheader("📊 Multi-Ticker Profit Comparison (Overlapping Period)")
+            st.info(f"Comparing profit opportunities over common date range")
+            
+            with st.expander("View Multi-Ticker Profit Comparison", expanded=True):
+                # Metrics for each ticker in comparison
+                for idx, row in profit_summary.iterrows():
+                    col1, col2 = st.columns(2)
+                    
+                    # Calculate profit multiplier (multiple vs single)
+                    if row['MaxProfit_Single'] > 0:
+                        profit_multiplier = row['MaxProfit_Multiple'] / row['MaxProfit_Single']
+                        multiplier_text = f"{profit_multiplier:.2f}x multiple"
+                    else:
+                        multiplier_text = "N/A"
+                    
+                    col1.metric(f"{row['Ticker']} — Max Profit (Single)", 
+                               f"${row['MaxProfit_Single']:.2f}",
+                               delta="Best single trade")
+                    col2.metric(f"{row['Ticker']} — Max Profit (Multiple)", 
+                               f"${row['MaxProfit_Multiple']:.2f}",
+                               delta=multiplier_text)
+                
+                # Profit Comparison Chart
+                fig_profit = plot_profit_comparison(profit_summary)
+                
+                # Download Buttons
+                st.download_button(
+                    "💾 Download Multi-Ticker Profit (CSV)",
+                    profit_summary.to_csv(index=False, float_format="%.2f").encode(),
+                    "profit_comparison.csv"
+                )
+                if fig_profit:
+                    st.download_button(
+                        "💾 Download Profit Comparison Chart (HTML)",
+                        data=fig_profit.to_html(include_plotlyjs='cdn'),
+                        file_name="profit_comparison.html"
+                    )
+    else:
+        st.warning("No profit data available.")

@@ -22,17 +22,17 @@ Traditional stock analysis platforms suffer from several limitations:
 
 ### 📊 Data Management
 - **Multi-source Data Import**: Fetch real-time data from Yahoo Finance or upload custom CSV files
-- **Automated Data Cleaning**: Handle missing values, align with trading calendars, detect outliers
-- **Data Validation**: Comprehensive quality checks and schema validation
+- **Automated Data Cleaning**: Handle missing values, align with trading calendars, detect outliers using Z-score and IQR methods
+- **Data Validation**: Comprehensive quality checks and schema validation with zero missing values
 - **Flexible Date & SMA Ranges**: Per-ticker customization with global override options
-- **Global Settings**: Apply consistent parameters across all tickers with one-click configuration
+- **Trading Day Alignment**: Restrict analysis to official NYSE trading days only
 
 ### 📈 Analytics & Calculations
-- **Daily Returns**: Vectorized calculation with O(n) performance and manual debugging
-- **Technical Indicators**: Simple Moving Averages (SMA) with customizable windows
+- **Daily Returns**: Vectorized calculation with O(n) performance and manual debugging modes
+- **Technical Indicators**: Simple Moving Averages (SMA) with customizable windows and crossover signals
 - **Trend Analysis**: Streak detection for consecutive up/down days with momentum insights
 - **Risk Metrics**: Annualized returns, volatility, and Sharpe ratios for portfolio optimization
-- **Profit Optimization**: Single and multiple transaction profit calculations with O(n) algorithms
+- **Profit Optimization**: Single (O(n) sliding window) and multiple transaction (O(n) vectorized) profit calculations
 
 ### 📊 Visualization
 - **Interactive Charts**: Plotly-based visualizations with hover details
@@ -40,6 +40,7 @@ Traditional stock analysis platforms suffer from several limitations:
 - **Trend Streaks**: Color-coded upward/downward trend segments
 - **Risk-Return Scatter**: Sharpe ratio highlighting for optimal investments
 - **Profit Comparison**: Single vs. multiple transaction performance analysis
+- **Buy/Sell Indicators**: Optimal trading points based on local minima/maxima
 
 ### 💾 Export Capabilities
 - **CSV Downloads**: Cleaned data, analytics results, profit summaries
@@ -267,4 +268,3 @@ For issues and questions:
 ---
 
 **Built with ❤️ for transparent financial data analysis and algorithmic trading education**
-   
